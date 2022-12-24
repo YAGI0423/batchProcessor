@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+import reBert.layerUtil as layerUtil
+
 class EmbeddingLayer(nn.Module):
     def __init__(self, config):
         super(EmbeddingLayer, self).__init__()
@@ -22,3 +24,32 @@ class EmbeddingLayer(nn.Module):
         pos = pos.unsqueeze(0).repeat(batch_size, 1)
         pos = pos.to(self.config['device'])
         return pos
+
+class MultiHeadAttention(nn.Module):
+    def __init__(self, config):
+        super(MultiHeadAttention, self).__init__()
+        self.config = config
+        
+        self.W_Q = nn.Linear(config['d_model'], config['d_model'] * config['n_heads'])
+        self.W_K = nn.Linear(config['d_model'], config['d_model'] * config['n_heads'])
+        self.W_V = nn.Linear(config['d_model'], config['d_model'] * config['n_heads'])
+        
+        self.W_out = nn.Linear(config['d_model'] * config['n_heads'], config['d_model'])
+        
+    def forward(self, Q, K, V, attention_pad_mask):
+        batch_size = Q.size(0)
+        
+        #Batch x n_head x seq_len x d_model
+        q_s = self.W_Q(Q).view(batch_size, -1, self.config['n_heads'], self.config['d_model']).transpose(1, 2)
+        k_s = self.W_K(K).view(batch_size, -1, self.config['n_heads'], self.config['d_model']).transpose(1, 2)
+        v_s = self.W_V(V).view(batch_size, -1, self.config['n_heads'], self.config['d_model']).transpose(1, 2)
+        
+        #Batch x n_head x seq_len x seq_len
+        atten_pad_mask = attention_pad_mask.unsqueeze(1).repeat(1, self.config['n_heads'], 1, 1)
+
+        context = layerUtil.get_scaledDotProductAttention(q_s, k_s, v_s, atten_pad_mask)
+        context = context.transpose(1, 2).contiguous().view(batch_size, -1, self.config['n_heads'] * self.config['d_model'])
+        #Batch x seq_len x n_head * d_model
+        
+        output = self.W_out(context)
+        return output
