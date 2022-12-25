@@ -53,3 +53,17 @@ class MultiHeadAttention(nn.Module):
         
         output = self.W_out(context)
         return output
+
+class PositionWiseFeedForward(nn.Module):
+    def __init__(self, config):
+        super(PositionWiseFeedForward, self).__init__()
+        self.W_1 = nn.Linear(config['d_model'], config['d_ff'])
+        self.W_2 = nn.Linear(config['d_ff'], config['d_model'])
+        
+        self.dropout = nn.Dropout(0.1)
+
+    def forward(self, x):
+        out = GELU(self.W_1(x))
+        out = self.dropout(out)
+        out = self.W_2(out)
+        return out
