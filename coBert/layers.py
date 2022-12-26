@@ -1,28 +1,40 @@
 import torch
 import torch.nn as nn
 
-import reBert.layerUtil as layerUtil
+import coBert.layerUtil as layerUtil
 
 class EmbeddingLayer(nn.Module):
     def __init__(self, config):
         super(EmbeddingLayer, self).__init__()
         self.config = config
-        self.position_emb = nn.Embedding(config['max_len'], config['d_model'])
+
+        max_len = config['max_len']
+        if config['is_cls_embedding']:
+            self.cls_emb = nn.Embedding(1, config['d_model'])
+            max_len += 1 #for cls emb
+
+        self.position_emb = nn.Embedding(max_len, config['d_model'])
         self.seg_emb = nn.Embedding(2, config['d_model'])
-        
         self.norm = nn.LayerNorm(config['d_model'])
         
     def forward(self, x, segment_mask):
-        pos = self.__to_position_mask(x)
+        if self.config['is_cls_embedding']:
+            batch_size = x.size(0)
+            cls_batch = torch.zeros((batch_size, 1), dtype=torch.int64, device=self.config['device'])
+            
+            cls = self.cls_emb(cls_batch)
+            x = torch.cat([cls, x], dim=1)
+            segment_mask = torch.cat([cls_batch, segment_mask], dim=1)
+
+        pos = self.__get_position_mask(x)
         
         embedding = x + self.position_emb(pos) + self.seg_emb(segment_mask)
         return self.norm(embedding)
         
-    def __to_position_mask(self, x):
+    def __get_position_mask(self, x):
         batch_size, seq_len, _ = x.shape
-        pos = torch.torch.arange(seq_len, dtype=torch.long)
+        pos = torch.torch.arange(seq_len, dtype=torch.long, device=self.config['device'])
         pos = pos.unsqueeze(0).repeat(batch_size, 1)
-        pos = pos.to(self.config['device'])
         return pos
 
 class MultiHeadAttention(nn.Module):
@@ -60,10 +72,37 @@ class PositionWiseFeedForward(nn.Module):
         self.W_1 = nn.Linear(config['d_model'], config['d_ff'])
         self.W_2 = nn.Linear(config['d_ff'], config['d_model'])
         
-        self.dropout = nn.Dropout(0.1)
+        self.dropout = nn.Dropout(config['dropout_rate'])
 
     def forward(self, x):
-        out = GELU(self.W_1(x))
+        out = layerUtil.GELU(self.W_1(x))
         out = self.dropout(out)
         out = self.W_2(out)
         return out
+
+class AddNorm(nn.Module):
+    def __init__(self, config):
+        super(AddNorm, self).__init__()
+        self.normLayer = nn.LayerNorm(config['d_model'])
+        
+    def forward(self, x, sub_layer):
+        residual = x
+        add = sub_layer(x) + residual
+        norm = self.normLayer(add)
+        return norm
+
+class EncoderLayer(nn.Module):
+    def __init__(self, config):
+        super(EncoderLayer, self).__init__()
+        self.multi_head_atten = MultiHeadAttention(config)
+        self.multi_head_addNorm = AddNorm(config)
+        
+        self.ffnn = PositionWiseFeedForward(config)
+        self.ffnn_addNorm = AddNorm(config)
+        
+    def forward(self, enc_inputs, enc_attention_pad_mask):
+        multi_head = self.multi_head_addNorm(
+            enc_inputs, sub_layer=lambda x_: self.multi_head_atten(x_, x_, x_, enc_attention_pad_mask)
+        )
+        feed_forward = self.ffnn_addNorm(multi_head, sub_layer=self.ffnn)
+        return feed_forward
