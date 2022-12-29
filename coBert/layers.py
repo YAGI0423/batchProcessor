@@ -4,36 +4,22 @@ import torch.nn as nn
 import coBert.layerUtil as layerUtil
 
 class EmbeddingLayer(nn.Module):
-    def __init__(self, config):
+    def __init__(self, max_len, d_model, device):
         super(EmbeddingLayer, self).__init__()
-        self.config = config
+        self.device= device
 
-        max_len = config['max_len']
-        if config['is_cls_embedding']:
-            self.cls_emb = nn.Embedding(1, config['d_model'])
-            max_len += 1 #for cls emb
-
-        self.position_emb = nn.Embedding(max_len, config['d_model'])
-        self.seg_emb = nn.Embedding(2, config['d_model'])
-        self.norm = nn.LayerNorm(config['d_model'])
+        self.position_emb = nn.Embedding(max_len, d_model)
+        self.seg_emb = nn.Embedding(2, d_model)
+        self.norm = nn.LayerNorm(d_model)
         
     def forward(self, x, segment_mask):
-        if self.config['is_cls_embedding']:
-            batch_size = x.size(0)
-            cls_batch = torch.zeros((batch_size, 1), dtype=torch.int64, device=self.config['device'])
-            
-            cls = self.cls_emb(cls_batch)
-            x = torch.cat([cls, x], dim=1)
-            segment_mask = torch.cat([cls_batch, segment_mask], dim=1)
-
         pos = self.__get_position_mask(x)
-        
         embedding = x + self.position_emb(pos) + self.seg_emb(segment_mask)
         return self.norm(embedding)
         
     def __get_position_mask(self, x):
         batch_size, seq_len, _ = x.shape
-        pos = torch.torch.arange(seq_len, dtype=torch.long, device=self.config['device'])
+        pos = torch.torch.arange(seq_len, dtype=torch.long, device=self.device)
         pos = pos.unsqueeze(0).repeat(batch_size, 1)
         return pos
 
@@ -52,6 +38,7 @@ class MultiHeadAttention(nn.Module):
         batch_size = Q.size(0)
         
         #Batch x n_head x seq_len x d_model
+        #why `transpose`: n_head별로 (seq_len x d_model) · (d_model x seq_len)으로 matmul 하기 위해
         q_s = self.W_Q(Q).view(batch_size, -1, self.config['n_heads'], self.config['d_model']).transpose(1, 2)
         k_s = self.W_K(K).view(batch_size, -1, self.config['n_heads'], self.config['d_model']).transpose(1, 2)
         v_s = self.W_V(V).view(batch_size, -1, self.config['n_heads'], self.config['d_model']).transpose(1, 2)

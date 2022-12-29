@@ -11,7 +11,7 @@ def get_attention_pad_mask(embedding):
 
 def get_scaledDotProductAttention(Q, K, V, attention_pad_mask):
         #Q, K, V shape: Batch x n_head x seq_len x d_model
-        d_k = K.size(-1)
+        d_k = K.size(-1) #=d_model
         
         attention_score = torch.matmul(Q, K.transpose(-1, -2)) #Q·K.T
         attention_score /= math.sqrt(d_k) #(Q·K.T) / sqrt(d_k)

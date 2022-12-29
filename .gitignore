@@ -129,4 +129,3 @@ dmypy.json
 .pyre/
 
 #personal
-__pycache__
