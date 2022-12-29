@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-import coBert.layerUtil as layerUtil
+import coBert.layerUtils as layerUtils
 
 class EmbeddingLayer(nn.Module):
     def __init__(self, max_len, d_model, device):
@@ -46,7 +46,7 @@ class MultiHeadAttention(nn.Module):
         #Batch x n_head x seq_len x seq_len
         atten_pad_mask = attention_pad_mask.unsqueeze(1).repeat(1, self.config['n_heads'], 1, 1)
 
-        context = layerUtil.get_scaledDotProductAttention(q_s, k_s, v_s, atten_pad_mask)
+        context = layerUtils.get_scaledDotProductAttention(q_s, k_s, v_s, atten_pad_mask)
         context = context.transpose(1, 2).contiguous().view(batch_size, -1, self.config['n_heads'] * self.config['d_model'])
         #Batch x seq_len x n_head * d_model
         
@@ -62,7 +62,7 @@ class PositionWiseFeedForward(nn.Module):
         self.dropout = nn.Dropout(config['dropout_rate'])
 
     def forward(self, x):
-        out = layerUtil.GELU(self.W_1(x))
+        out = layerUtils.GELU(self.W_1(x))
         out = self.dropout(out)
         out = self.W_2(out)
         return out

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 import coBert.layers as layers
-import coBert.layerUtil as layerUtil
+import coBert.layerUtils as layerUtils
 
 class BERT(nn.Module):
     def __init__(self, config):
@@ -13,7 +13,7 @@ class BERT(nn.Module):
     def forward(self, input_ids, segment_ids):
         #input_ids shape: Batch x seq_len x d_model
         #segment_ids shape: Batch x seq_len
-        enc_atten_pad_mask = layerUtil.get_attention_pad_mask(input_ids)
+        enc_atten_pad_mask = layerUtils.get_attention_pad_mask(input_ids)
         out = self.embedding(input_ids, segment_ids)
 
         #Input & output shape: Batch x seq_len x d_model
@@ -36,7 +36,7 @@ class CoBERT(nn.Module):
     def forward(self, input_ids, segment_ids):
         #input_ids shape: Batch x seq_len x d_model
         #segment_ids shape: Batch x seq_len
-        out = layerUtil.GELU(self.featByEmb(input_ids))
+        out = layerUtils.GELU(self.featByEmb(input_ids))
 
         if self.config['is_cls_embedding']:
             batch_size = input_ids.size(0)
