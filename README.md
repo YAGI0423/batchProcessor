@@ -14,7 +14,7 @@
 ***
 
 <br><br>
-<img src='./figures/fig_batchProcessor.png' height=300>
+<img src='./figures/fig_batchProcessor.png' height=400>
 
 <b>Fig 1</b>. Schematic diagram of a batch processor. 각 Thread로부터 입력받은 데이터를 특정 배치 크기(Batch Size)로 묶어 일괄적으로 처리한 후, 이를 다시 입력처(Trhead)로 반환하는 모듈이다. 배치로 처리할 경우, 효율적인 딥러닝 모델 또는 특정 웹 서비스에서 활용할 수 있다.
 
