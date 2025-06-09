@@ -30,6 +30,9 @@ from batchProcessor import BatchProcessor
 class TestBP(BatchProcessor):
     def process(self, batch_input: tuple) -> tuple|list:
         '''사용자 용도에 맞춰 작성 요함\n
+        요청된 데이터의 묶음(batch)을 처리하는 메소드
+
+
         * return 값은 반드시 `{batch_input}`의 길이와 동일해야 함
         * return 값의 형태는 `tuple` 또는 `list` 여야함
 
@@ -41,15 +44,18 @@ class TestBP(BatchProcessor):
         return [10. * item['input'] for item in batch_input]
 
         
-#timeout 초과 시, batch size에 도달하지 않았더라도,
-# 요청(request)된 데이터를 배치로 묶어 처리
 batch_processor = TestBP(
     batch_size=2,
     timeout=0.1,    
 )
+#timeout 초과 시, batch size에 도달하지 않았더라도,
+# 요청(request)된 데이터를 배치로 묶어 처리
 
 
 def worker(input: int) -> None:
+    #예시 함수
+    #input을 Batch Processor에 입력하고 
+    #처리 결과를 반환(response) 받은 값 표시(print)
     response = batch_processor.request(input=input)
     print(f'input: {input},\tresponse: {response}')
 
